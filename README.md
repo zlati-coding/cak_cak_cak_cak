@@ -1,2 +1,2 @@
 Health device, който анализира чрез изкуствен интелект урина. Данните за урината се измерват чрез сензори за pH, мътност и цвят. Измерените данни се анализират и се изпращат на потребителя по имейл.
-[Urinator3000.pptx](https://github.com/user-attachments/files/19397803/Urinator3000.pptx)
+[Urinator3000.pptx](https://github.com/user-attachments/files/19397959/Urinator3000.pptx)
