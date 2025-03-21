@@ -38,6 +38,7 @@ if not wait_for_ollama():
 ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 
 print("✅ Starting data collection...")
+time.sleep(16)
 
 # **Collect 5 seconds of raw data**
 raw_data_log = []
@@ -58,7 +59,7 @@ raw_text_data = "\n".join(raw_data_log)
 
 # **AI Analysis with Ollama**
 prompt = f"""
-Analyze the following raw urine sensor data and provide insights:
+Analyze the following raw urine sensor data and provide insights (the given data is one sample measured consistently in 5 seconds). Form one sample from the average of all measured values and analyze it:
 
 {raw_text_data}
 
@@ -69,7 +70,6 @@ The data consists of:
 
 Please provide an accurate prediction about the provided data.
 You have to tell possible health risks, and give an advice about possible diet change for example.
-The data samples are multiple, because I collected 5 seconds of the data.
 I don't want you to say things like "I can't precisely predict" or "I can't tell you have to visit a doctor".
 """
 

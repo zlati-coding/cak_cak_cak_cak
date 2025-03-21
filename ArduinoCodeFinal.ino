@@ -12,8 +12,8 @@
 #define SensorPin A0 //pH meter Analog output to Arduino Analog Input 0
 #define Offset 1.6 //deviation compensate
 #define LED 13
-#define samplingInterval 5000
-#define printInterval 120000
+#define samplingInterval 600
+#define printInterval 16000
 #define ArrayLenth 40 //times of collection
 int pHArray[ArrayLenth]; //Store the average value of the sensor feedback
 int pHArrayIndex=0;
@@ -149,12 +149,6 @@ void setup() {
 }
 
 void loop() {
-
-    if(read_light() == 1024) Serial.print("Clear urine with hex color: ");
-    else Serial.print("! Unclear urine !  Hex color: ");
-    read_tcs3200();
-    delay(2000);
-    
     static unsigned long samplingTime = millis();
     static unsigned long printTime = millis();
     static float pHValue,voltage;
@@ -166,11 +160,22 @@ void loop() {
     pHValue = 3.5*voltage+Offset;
     samplingTime=millis();
     }
-    if(millis() - printTime > printInterval)
+    if(millis() - printTime >= printInterval)
     {
-    Serial.print(" PH value: ");
-    Serial.println(pHValue,2);
-    digitalWrite(LED,digitalRead(LED)^1);
-    printTime=millis();
+      while(1){
+      pHArray[pHArrayIndex++]=analogRead(SensorPin);
+      if(pHArrayIndex==ArrayLenth)pHArrayIndex=0;
+      voltage = avergearray(pHArray, ArrayLenth)*5.0/1024;
+      pHValue = 3.5*voltage+Offset;
+
+      Serial.print("PH value: ");
+      Serial.println(pHValue,2);
+      digitalWrite(LED,digitalRead(LED)^1);
+      printTime=millis();
+      if(read_light() == 1024) Serial.print("Clear urine with hex color: ");
+      else Serial.print("! Unclear urine !  Hex color: ");
+      read_tcs3200();
+      delay(500);
+      }
     }
 }
