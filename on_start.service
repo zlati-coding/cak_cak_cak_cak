@@ -1,0 +1,16 @@
+[Unit]
+Description=Run urine_analysis script at boot
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c 'source myenv/bin/activate && python3 home/zlati/Desktop/cak_cak_cak_cak/urine_analysis.py'
+WorkingDirectory=/home/zlati/Desktop/cak_cak_cak_cak
+User=pi
+Group=pi
+Environment=PATH=/home/zlati/Desktop/cak_cak_cak_cak/myenv/bin:$PATH
+Environment=VIRTUAL_ENV=/home/zlati/Desktop/cak_cak_cak_cak/myenv
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
