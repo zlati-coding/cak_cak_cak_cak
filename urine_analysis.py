@@ -2,6 +2,9 @@ import ollama
 import serial
 import time
 import re
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # **Set up the serial connection**
 ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
@@ -32,10 +35,16 @@ Analyze the following raw urine sensor data and provide insights:
 {raw_text_data}
 
 The data consists of:
-- Urine color (HEX codes)
-- Ambient light levels (lux)
+- The color of the urine(in hex)
+- The pH levels of the urine
+- A string which is "clear" or "unclear", that represents if the urine is clear and watery or unclear
 
-Please provide insights on potential health conditions based on this information.
+Please provide an accurate prediction about the provided data.
+You have to tell possible health risks, and give an advice about possible diet change for example.
+The data samples are multiple, because I collected 5 seconds of the data.
+I dont want you to say things like "I can't precisely predict" or "I can't tell you have to visit a doctor".
+
+
 """
 
 response = ollama.chat(model="llama3.2", messages=[{"role": "user", "content": prompt}])
@@ -45,23 +54,43 @@ print("\n=== Raw Urine Sensor Data ===")
 print(raw_text_data)
 
 print("\n=== AI Analysis ===")
-print(response["message"]["content"])
+ai_analysis = response["message"]["content"]
+print(ai_analysis)
 
-# **Ask for additional symptoms**
-user_symptoms = input("\nDo you have any symptoms? (e.g., dark urine, frequent urination, fatigue): ").strip()
+# **Email setup**
+from_email = "cakcakurine@gmail.com"
+to_email = "ikonomovdaniel2@gmail.com"
+password = "ssipjnlhqhqcslmu"  # If using Gmail, you should create an app-specific password for better security.
 
-if user_symptoms:
-    prompt_with_symptoms = f"""
-    Given the raw urine sensor data:
+# Create the message
+msg = MIMEMultipart()
+msg['From'] = from_email
+msg['To'] = to_email
+msg['Subject'] = "Urine Analysis Report from Raspberry Pi"
 
-    {raw_text_data}
+# Body of the email with the AI analysis
+body = f"""
+Here is the urine analysis report:
 
-    And considering the following patient symptoms: "{user_symptoms}", analyze the results and provide a diagnosis.
-    """
+Raw Data:
+{raw_text_data}
 
-    response_symptoms = ollama.chat(model="llama3.2", messages=[{"role": "user", "content": prompt_with_symptoms}])
+AI Analysis:
+{ai_analysis}
 
-    print("\n=== Updated AI Analysis Based on Symptoms ===")
-    print(response_symptoms["message"]["content"])
-else:
-    print("\nNo additional symptoms provided. AI analysis remains based on urine data only.")
+If you have any further questions or symptoms, please consult a healthcare provider.
+"""
+msg.attach(MIMEText(body, 'plain'))
+
+# Send the email using Gmail's SMTP server
+try:
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()  # Encrypt the connection
+    server.login(from_email, password)  # Login to the server
+    text = msg.as_string()  # Convert the message to a string format
+    server.sendmail(from_email, to_email, text)  # Send the email
+    print("Email sent successfully!")
+except Exception as e:
+    print(f"Error: {e}")
+finally:
+    server.quit()  # Close the connection
