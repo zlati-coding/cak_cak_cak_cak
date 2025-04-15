@@ -3,12 +3,16 @@ import serial
 import time
 import subprocess
 import smtplib
+import os
+from dotenv import load_dotenv
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+# Load environment variables
+load_dotenv()
+
 # Function to check if Ollama is running
 def is_ollama_running():
-    """Check if Ollama service is running."""
     try:
         result = subprocess.run(["pgrep", "-f", "ollama"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return result.returncode == 0
@@ -18,7 +22,6 @@ def is_ollama_running():
 
 # Function to wait for Ollama to start
 def wait_for_ollama(timeout=60, interval=5):
-    """Wait for Ollama to start, with a timeout."""
     elapsed_time = 0
     while not is_ollama_running():
         if elapsed_time >= timeout:
@@ -36,7 +39,7 @@ ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 print("✅ Starting data collection...")
 time.sleep(16)
 
-# Collect raw data from serial input
+# Collect raw data
 raw_data_log = []
 start_time = time.time()
 while time.time() - start_time < 5:
@@ -48,7 +51,7 @@ while time.time() - start_time < 5:
     except Exception as e:
         print("⚠️ Error reading from serial:", e)
 
-# Parse raw data into structured format
+# Parse data
 urine_samples = []
 current_sample = {}
 for line in raw_data_log:
@@ -58,30 +61,26 @@ for line in raw_data_log:
         current_sample["hex_color"] = line.split(": ")[1]
         current_sample["is_clear"] = True
         urine_samples.append(current_sample)
-        current_sample = {}  # Reset for next sample
+        current_sample = {}
     elif "urine with hex color:" in line:
         current_sample["hex_color"] = line.split(": ")[1]
         current_sample["is_clear"] = False
         urine_samples.append(current_sample)
-        current_sample = {}  # Reset for next sample
+        current_sample = {}
 
-# Calculate the average pH value
+# Analyze data
 average_ph = sum(sample["ph_value"] for sample in urine_samples) / len(urine_samples)
-# Determine if the majority of samples are clear
 is_mostly_clear = sum(1 for sample in urine_samples if sample["is_clear"]) > (len(urine_samples) / 2)
-# Use the most common hex color
 most_common_color = max(set(sample["hex_color"] for sample in urine_samples), key=lambda c: sum(1 for s in urine_samples if s["hex_color"] == c))
 
-# Reference values for normal urine
+# Reference values
 reference_ph_min = 4.5
 reference_ph_max = 8.0
-reference_clear = True  # Typically, healthy urine is clear
-reference_colors = {"#FAFAD2", "#FFFFE0", "#FFFACD"}  # Light yellow shades
+reference_clear = True
+reference_colors = {"#FAFAD2", "#FFFFE0", "#FFFACD"}
 
-# Format data for AI prompt
+# AI Prompt
 raw_text_data = f"Average pH: {average_ph:.2f}, Most Common Color: {most_common_color}, Mostly Clear: {is_mostly_clear}"
-
-# AI Analysis with Ollama
 prompt = f"""
 Analyze the following raw urine sensor data and provide insights:
 
@@ -94,7 +93,7 @@ The data consists of:
 
 Please provide an accurate prediction about the provided data.
 You have to tell possible health risks, and give an advice about possible diet change for example.
-I don't want you to say things like "I can't precisely predict" or "I can't tell you have to visit a doctor.
+I don't want you to say things like "I can't precisely predict" or "I can't tell you have to visit a doctor."
 """
 
 try:
@@ -107,22 +106,19 @@ except Exception as e:
 # Print results
 print("\n=== Raw Urine Sensor Data ===")
 print(raw_text_data)
-
 print("\n=== AI Analysis ===")
 print(ai_analysis)
 
-# Email setup
-from_email = "cakcakurine@gmail.com"
-to_email = "ikonomovdaniel2@gmail.com"
-password = "ssipjnlhqhqcslmu"  # Use environment variables for security!
+# Email setup using environment variables
+from_email = os.getenv("FROM_EMAIL")
+to_email = os.getenv("TO_EMAIL")
+password = os.getenv("EMAIL_PASSWORD")
 
-# Create the message
 msg = MIMEMultipart()
 msg['From'] = from_email
 msg['To'] = to_email
 msg['Subject'] = "Urine Analysis Report from Raspberry Pi"
 
-# Body of the email
 body = f"""
 Here is the urine analysis report:
 
@@ -144,7 +140,6 @@ If you have any further questions or symptoms, please consult a healthcare provi
 """
 msg.attach(MIMEText(body, 'plain'))
 
-# Send the email
 try:
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
